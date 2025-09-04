@@ -73,3 +73,15 @@ strategic thinking to personal well-being and life choices.
     python life_portfolio.py --manual
 ```
     In this, you are required to enter values corresponding to each SLUs mentioned in the prompt.
+
+
+## 📊 Example Output
+
+Here’s what the visualization looks like with sample data:
+
+![Life Portfolio Scatter Plot](images/life_portfolio_chart.png)
+
+## Futute Improvements
+ - Saving plots
+ - Adding interactivity
+ - Better UI

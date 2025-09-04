@@ -1,73 +1,119 @@
 import argparse
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 
-# Column names
-col = ['Average_time_spent', 'Importance', 'Satisfaction']
-sla = [
-    'Significant other', 'Family', 'Friendship', 'Phy. Health/sports',
-    'Mental Health/mindfullness', 'Spirituality/faith', 'Community/citizenship',
-    'Social Engagement', 'Job/career', 'Education/learning', 'Finances',
-    'Hobbies/interests', 'Online entertainment', 'Offline entertainment',
+
+# Constants
+COLS = ['Average_time_spent', 'Importance', 'Satisfaction']
+SLAS = [
+    'Significant other', 'Family', 'Friendship', 'Physical Health/sports',
+    'Mental Health/Mindfullness', 'Spirituality/Faith', 'Community/Citizenship',
+    'Social Engagement', 'Job/Career', 'Education/Learning', 'Finances',
+    'Hobbies/Interests', 'Online entertainment', 'Offline entertainment',
     'Physiological needs', 'Activities of daily living'
 ]
 
-# CLI parser
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--manual",
-    action="store_true",
-    help="If set, enter data manually instead of using sample dataset."
-)
-parser.add_argument(
-    "--datafile",
-    type=str,
-    default="sample_life_portfolio.csv",
-    help="Path to dataset file (default: sample_life_portfolio.csv). Ignored if --manual is used."
-)
+def load_manual_data():
+    """Prompt the user for manual input of life portfolio data."""
+    while True:  # keep asking until valid
+        life_portfolio = []
+        for i in range(len(SLAS)):
+            user_in = list(map(int, input(
+                f"Enter Average_time_spent, Importance, Satisfaction for {SLAS[i]} (comma-separated): "
+            ).split(',')))
+            life_portfolio.append(user_in)
+
+        # Check total hours (first column of all rows)
+        total_hours = sum(row[0] for row in life_portfolio)
+        if total_hours != 168:
+            print(f"The total average time spent is {total_hours}, but it should be 168. Please re-enter your data.")
+        else:
+            break
+
+    return pd.DataFrame(data=life_portfolio, columns=COLS, index=SLAS)
 
 
-# this is for the jupyter notebook
-args, unknown = parser.parse_known_args()
+def plot_life_portfolio(data_df):
+    plt.figure(figsize=(10, 8))
+    slus = list(data_df.index)
+    n_bubbles = len(slus)
+    numbers = np.arange(1, n_bubbles+1)
+    
+    # Bubble sizes
+    bubble_sizes = np.array([max(400, x*50) for x in data_df['Average_time_spent']])
+    radii = np.sqrt(bubble_sizes/np.pi) / 60  # Estimate: adjust denominator if bubbles are too large/small
 
-# for terminal user -- args = parser.parse_args()
+    # Padding for axes
+    pad = radii.max()
+    x_min, x_max = 1 + pad, 9 - pad
+    y_min, y_max = 1 + pad, 9 - pad
 
-# Load data
-if args.manual:
-    print("Manual input mode selected.")
-    life_portfolio = []
-    for i in range(len(sla)):
-        user_in = list(map(int, input(
-            f"Enter Average_time_spent, Importance, Satisfaction for {sla[i]} (comma-separated): "
-        ).split(',')))
-        life_portfolio.append(user_in)
+    # Clip satisfaction/importance values so bubbles are not too close to edges
+    satisfaction = np.clip(data_df['Satisfaction'].values, x_min, x_max)
+    importance = np.clip(data_df['Importance'].values, y_min, y_max)
+    
+    # Jitter for overlapping
+    for i in range(n_bubbles):
+        for j in range(i):
+            if abs(satisfaction[i] - satisfaction[j])<0.1 and abs(importance[i] - importance[j])<0.1:
+                satisfaction[i] += np.random.uniform(-0.10, 0.10)
+                importance[i] += np.random.uniform(-0.10, 0.10)
+    
+    # Plot bubbles
+    plt.scatter(
+        satisfaction, importance,
+        s=bubble_sizes, color='#63c3ff', edgecolor='deepskyblue', alpha=0.7, linewidths=1.5
+    )
+    # Annotate numbers
+    for i, num in enumerate(numbers):
+        plt.annotate(str(num), (satisfaction[i], importance[i]), fontsize=14, ha='center', va='center', weight='bold', color='black')
+    
+    # Quadrant lines and styling
+    plt.axhline(y=5, color='gray', linestyle='--', linewidth=1.2)
+    plt.axvline(x=5, color='gray', linestyle='--', linewidth=1.2)
+    plt.xlabel("Satisfaction", fontsize=16, labelpad=15)
+    plt.ylabel("Importance", fontsize=16, labelpad=15)
+    plt.xlim(1, 9)
+    plt.ylim(1, 9)
+    plt.xticks([])
+    plt.yticks([])
+    plt.grid(False)
+    plt.box(False)
+    plt.title("Life Portfolio", fontsize=20, weight='bold', pad=20)
+    plt.text(1, 0.2, "LOW", ha="left", va="center", fontsize=14)
+    plt.text(9, 0.2, "HIGH", ha="right", va="center", fontsize=14)
+    plt.text(0.2, 1, "LOW", ha="center", va="bottom", rotation=90, fontsize=14)
+    plt.text(0.2, 9, "HIGH", ha="center", va="top", rotation=90, fontsize=14)
+    legend_text = "\n".join([f"{num}. {slu}" for num, slu in zip(numbers, slus)])
+    plt.gcf().text(0.82, 0.5, legend_text, fontsize=13, va='center', ha='left', bbox=dict(facecolor='white', edgecolor='gray'), color='black')
+    plt.tight_layout(rect=[0, 0, 0.78, 1])
+    plt.savefig("life_portfolio_chart.png", bbox_inches='tight', dpi=150)
+    plt.show()
 
-    data_df = pd.DataFrame(data=life_portfolio, columns=col, index=sla)
 
-else:
-    print(f"Loading sample dataset from {args.datafile}...")
-    data_df = pd.read_csv(args.datafile, index_col=0)  # assumes first col is index (sla)
 
-# Show dataframe
-print(data_df)
 
-# Plotting
-plt.figure(figsize=(20, 12))
-plt.scatter(
-    data_df['Satisfaction'], data_df['Importance'],
-    s=[max(40, x*100) for x in data_df['Average_time_spent']],
-    alpha=0.6, c='skyblue', edgecolor='k'
-)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--manual",
+        action="store_true",
+        help="If set, enter data manually instead of using sample dataset."
+    )
+    parser.add_argument(
+        "--datafile",
+        type=str,
+        default="data/sample_life_portfolio.csv",
+        help="Path to dataset file (default: data/sample_life_portfolio.csv). Ignored if --manual is used."
+    )
 
-# Add labels
-for i, row in data_df.iterrows():
-    plt.text(row['Satisfaction'] + 0.2, row['Importance'] + 0.2, row.name, fontsize=15)
+    args, _ = parser.parse_known_args()
 
-plt.xlabel('Satisfaction')
-plt.ylabel('Importance')
-# plt.xlim(0, 10)
-# plt.ylim(0, 10)
-plt.title('Life Categories: Importance vs. Satisfaction (Bubble size = Avg Time Spent)')
-plt.grid(True)
-# plt.tight_layout()
-plt.show()
+    if args.manual:
+        data_df = load_manual_data()
+    else:
+        data_df = pd.read_csv(args.datafile, index_col=0)
+
+    print(data_df)
+    plot_life_portfolio(data_df)

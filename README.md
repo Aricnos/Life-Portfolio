@@ -74,6 +74,11 @@ strategic thinking to personal well-being and life choices.
 ```
     In this, you are required to enter values corresponding to each SLUs mentioned in the prompt.
 
+## 📝 Example Data Entry
+
+When using `--manual` mode, the CLI asks for structured inputs:
+
+![Manual Input Example](images/dataset_format_sample.png)
 
 ## 📊 Example Output
 
